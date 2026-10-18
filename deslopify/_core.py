@@ -10,11 +10,12 @@ from dataclasses import dataclass, field
 class Commit:
     hash: str
     author: str
-    coauthor: str
+    trailers: str
     committer: str
     date: str
     message: str
     files: list[str] = field(default_factory=list)
+    ai: str | None = None
 
 
 def clone_repo(url: str) -> Path:
@@ -28,7 +29,7 @@ def clone_repo(url: str) -> Path:
 
 def get_commits(root: Path) -> list[Commit]:
     commits = []
-    fmt = r"""format:{"hash": "%H","author":"%aN <%aE>","coauthor":"%(trailers:key=Co-authored-by)","committer":"%cN <%cE>","date":"%ai","message":"%f"}%n"""
+    fmt = r"""format:{"hash": "%H","author":"%aN <%aE>","trailers":"%(trailers:separator=%x2c)","committer":"%cN <%cE>","date":"%ai","message":"%f"}%n"""
     cmd = ['git', 'log', '--pretty='+fmt]
     out = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=root)
     out.check_returncode()
@@ -36,7 +37,10 @@ def get_commits(root: Path) -> list[Commit]:
         line = line.replace('\n', ' ').strip()
         if not line:
             continue
-        parsed = json.loads(line)
+        try:
+            parsed = json.loads(line)
+        except json.decoder.JSONDecodeError:
+            continue
         commit = Commit(**parsed)
         cmd = ['git', 'diff-tree', '--no-commit-id', '--name-status', commit.hash, '-r']
         out = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=root)
@@ -45,3 +49,38 @@ def get_commits(root: Path) -> list[Commit]:
         commits.append(commit)
     commits.reverse()
     return commits
+
+
+TELLTALES = (
+    # names
+    ('Claude', 'Claude'),
+    ('Cursor Agent', 'Cursor'),
+    ('Copilot', 'Github Copilot'),
+
+    # emails
+    ('<noreply@anthropic.com>', 'Claude'),
+    ('<cursoragent@cursor.com>', 'Cursor'),
+    ('<noreply@aider.chat>', 'Aider'),
+
+    # custom trailers
+    ('aider:', 'Aider'),
+    ('Made-with:', 'an LLM'),
+    ('Generated-by:', 'an LLM'),
+    ('Assisted-by:', 'an LLM'),
+)
+
+
+def detect_ai(commit: Commit) -> str | None:
+    for telltale, name in TELLTALES:
+        if telltale in commit.author:
+            return f'authored by {name}'
+        if telltale in commit.trailers:
+            return f'co-authored by {name}'
+    if 'AGENTS.md' in commit.files:
+        return 'introduced AGENTS.md'
+    if 'CLAUDE.md' in commit.files:
+        return 'introduced CLAUDE.md'
+    for file in commit.files:
+        if file.startswith('.agents/'):
+            return 'introduced agents files'
+    return None
