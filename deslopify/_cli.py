@@ -1,7 +1,7 @@
 import sys
 from argparse import ArgumentParser
 from typing import NoReturn
-from ._core import clone_repo, get_commits, detect_ai
+from ._core import clone_repo, get_commits, detect_ai, Commit
 
 
 def run() -> int:
@@ -21,6 +21,9 @@ def run() -> int:
     print('first commit: ', commits[0].date)
     print('last commit:  ', commits[-1].date)
     n_ai = sum(1 for c in commits if c.ai)
+    if not n_ai:
+        print('no AI usage detected')
+        return 0
     n_all = len(commits)
     print('AI commits:   ', f'{n_ai}/{n_all} ({round(n_ai/n_all*100)}%)')
 
@@ -28,23 +31,24 @@ def run() -> int:
         if not commit.ai:
             continue
         print('first AI commit: ')
-        print('  hash:  ', commit.hash)
-        print('  date:  ', commit.date)
-        print('  author:', commit.author)
-        print('  reason:', commit.ai)
+        print_commit(commit)
         break
 
     for commit in reversed(commits):
         if not commit.ai:
             continue
         print('last AI commit: ')
-        print('  hash:  ', commit.hash)
-        print('  date:  ', commit.date)
-        print('  author:', commit.author)
-        print('  reason:', commit.ai)
+        print_commit(commit)
         break
 
     return 0
+
+
+def print_commit(commit: Commit) -> None:
+    print('  hash:  ', commit.hash)
+    print('  date:  ', commit.date)
+    print('  author:', commit.author)
+    print('  reason:', commit.ai)
 
 
 def entrypoint() -> NoReturn:

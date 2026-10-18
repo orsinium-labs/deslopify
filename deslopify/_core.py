@@ -74,6 +74,8 @@ def detect_ai(commit: Commit) -> str | None:
     for telltale, name in TELLTALES:
         if telltale in commit.author:
             return f'authored by {name}'
+        if telltale in commit.committer:
+            return f'committed by {name}'
         if telltale in commit.trailers:
             return f'co-authored by {name}'
     if 'AGENTS.md' in commit.files:
