@@ -23,7 +23,7 @@ def clone_repo(url: str) -> Path:
     out_dir = Path(gettempdir()) / project_name
     rmtree(out_dir, ignore_errors=True)
     cmd = ['git', 'clone', '--no-checkout', url, str(out_dir)]
-    subprocess.run(cmd).check_returncode()
+    subprocess.run(cmd, stderr=subprocess.DEVNULL).check_returncode()
     return out_dir
 
 
@@ -86,3 +86,11 @@ def detect_ai(commit: Commit) -> str | None:
         if file.startswith('.agents/'):
             return 'introduced agents files'
     return None
+
+
+def get_tag_for(commit: Commit, root: Path) -> str | None:
+    cmd = ['git', 'describe', '--contains', commit.hash]
+    out = subprocess.run(cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    if out.returncode != 0:
+        return None
+    return out.stdout.decode(encoding='utf-8').split('~')[0]

@@ -1,13 +1,15 @@
+from pathlib import Path
 import sys
 from argparse import ArgumentParser
 from typing import NoReturn
-from ._core import clone_repo, get_commits, detect_ai, Commit
+from ._core import clone_repo, get_commits, detect_ai, Commit, get_tag_for
 
 
 def run() -> int:
     parser = ArgumentParser()
     parser.add_argument('url')
     args = parser.parse_args(sys.argv[1:])
+    print('cloning...')
     root = clone_repo(args.url)
     print('analyzing...')
     commits = get_commits(root)
@@ -31,24 +33,27 @@ def run() -> int:
         if not commit.ai:
             continue
         print('first AI commit: ')
-        print_commit(commit)
+        print_commit(commit, root)
         break
 
     for commit in reversed(commits):
         if not commit.ai:
             continue
         print('last AI commit: ')
-        print_commit(commit)
+        print_commit(commit, root)
         break
 
     return 0
 
 
-def print_commit(commit: Commit) -> None:
-    print('  hash:  ', commit.hash)
-    print('  date:  ', commit.date)
-    print('  author:', commit.author)
-    print('  reason:', commit.ai)
+def print_commit(commit: Commit, root: Path) -> None:
+    print('  hash:   ', commit.hash)
+    print('  date:   ', commit.date)
+    print('  author: ', commit.author)
+    tag = get_tag_for(commit, root)
+    if tag:
+        print('  release:', tag)
+    print('  reason: ', commit.ai)
 
 
 def entrypoint() -> NoReturn:
