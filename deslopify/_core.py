@@ -119,3 +119,18 @@ def get_tag_for(commit: Commit, root: Path) -> str | None:
     if out.returncode != 0:
         return None
     return out.stdout.decode(encoding='utf-8').split('~')[0]
+
+
+def find_tag_before(tag: str, root: Path) -> str | None:
+    cmd = ['git', 'tag', '--sort=version:refname']
+    out = subprocess.run(cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    if out.returncode != 0:
+        return None
+    tags = out.stdout.decode(encoding='utf-8').splitlines()
+    try:
+        i = tags.index(tag)
+    except ValueError:
+        return None
+    if i == 0:
+        return None
+    return tags[i-1]

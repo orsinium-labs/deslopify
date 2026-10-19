@@ -3,7 +3,7 @@ import sys
 from argparse import ArgumentParser
 from collections import Counter
 from typing import NoReturn
-from ._core import clone_repo, get_commits, detect_ai, Commit, get_tag_for
+from ._core import clone_repo, find_tag_before, get_commits, detect_ai, Commit, get_tag_for
 
 
 def run() -> int:
@@ -46,6 +46,15 @@ def run() -> int:
         print('last AI commit: ')
         print_commit(commit, root)
         break
+
+    for commit in commits:
+        if commit.ai:
+            ai_tag = get_tag_for(commit, root)
+            if ai_tag:
+                prev_tag = find_tag_before(ai_tag, root)
+                if prev_tag:
+                    print('last AI-free release:', prev_tag)
+            break
 
     return 0
 
