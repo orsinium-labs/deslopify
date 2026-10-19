@@ -64,9 +64,10 @@ class Commit:
 def clone_repo(url: str) -> Path:
     project_name = url.strip('/').split('/')[-1]
     out_dir = Path(gettempdir()) / project_name
-    rmtree(out_dir, ignore_errors=True)
-    cmd = ['git', 'clone', '--no-checkout', url, str(out_dir)]
-    subprocess.run(cmd, stderr=subprocess.DEVNULL).check_returncode()
+    if not (out_dir / '.git' / 'config').exists():
+        rmtree(out_dir, ignore_errors=True)
+        cmd = ['git', 'clone', '--no-checkout', url, str(out_dir)]
+        subprocess.run(cmd, stderr=subprocess.DEVNULL).check_returncode()
     return out_dir
 
 
