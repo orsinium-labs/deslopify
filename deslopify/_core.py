@@ -4,7 +4,10 @@ from pathlib import Path
 from tempfile import gettempdir
 from shutil import rmtree
 from dataclasses import dataclass
+from typing import Iterator
 
+
+USER_AGENT = 'deslopify (https://github.com/orsinium-labs/deslopify)'
 
 TELLTALES = (
     # names
@@ -75,13 +78,35 @@ def clone_repo(url: str) -> Path:
     return out_dir
 
 
-def parse_gomod(path: Path) -> list[str]:
-    urls = []
+def parse_gomod(path: Path) -> Iterator[str]:
     for word in path.read_text().split():
         if word.startswith('github.com/'):
             url = '/'.join(word.split('/')[:3])
-            urls.append(f'https://{url}')
-    return urls
+            yield f'https://{url}'
+
+
+def parse_cargotoml(path: Path) -> Iterator[str]:
+    import tomllib
+
+    config = tomllib.loads(path.read_text())
+    for dep_name in config.get('dependencies', {}):
+        url = _get_crate_repo(dep_name)
+        if url:
+            yield url
+    for dep_name in config.get('dev-dependencies', {}):
+        url = _get_crate_repo(dep_name)
+        if url:
+            yield url
+
+
+def _get_crate_repo(name: str) -> str | None:
+    import requests
+
+    url = f'https://crates.io/api/v1/crates/{name}'
+    resp = requests.get(url, headers={'User-Agent': USER_AGENT})
+    if resp.status_code != 200:
+        return None
+    return resp.json()['crate'].get('repository')
 
 
 def get_commits(root: Path) -> list[Commit]:
@@ -110,11 +135,14 @@ def get_commits(root: Path) -> list[Commit]:
     for commit in commits:
         commit.ai_files = commit.hash in hashes
 
+    for commit in commits:
+        commit.ai = _detect_ai(commit)
+
     commits.reverse()
     return commits
 
 
-def detect_ai(commit: Commit) -> str | None:
+def _detect_ai(commit: Commit) -> str | None:
     for telltale, name in TELLTALES:
         if telltale in commit.author:
             return f'authored by {name}'

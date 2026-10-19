@@ -2,6 +2,8 @@
 
 Analyze any git project to find out when it turned into AI slop.
 
+AI detection is done based on git commit author, co-author, committer, agent files, etc. If the project author deliberately hides AI usage, we cannot detect it.
+
 ## Installation
 
 ```bash
@@ -27,4 +29,10 @@ Analyze Go project dependencies:
 
 ```bash
 python3 -m deslopify ./go.mod
+```
+
+Analyze Rust project dependencies:
+
+```bash
+python3 -m deslopify ./Cargo.toml
 ```

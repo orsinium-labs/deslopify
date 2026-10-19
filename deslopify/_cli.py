@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from collections import Counter
 from pathlib import Path
 from typing import NoReturn, TextIO
-from ._core import Commit, clone_repo, find_tag_before, get_commits, detect_ai, get_tag_for, parse_gomod
+from . import _core as core
 
 NO_AI = 0
 AI = 1
@@ -30,7 +30,12 @@ def run(stdout: TextIO) -> int:
     for url in args.urls:
         path = Path(url)
         if path.name == 'go.mod':
-            for url in parse_gomod(path):
+            for url in core.parse_gomod(path):
+                code = run_one(url, stdout)
+                max_code = max(max_code, code)
+            continue
+        if path.name == 'Cargo.toml':
+            for url in core.parse_cargotoml(path):
                 code = run_one(url, stdout)
                 max_code = max(max_code, code)
             continue
@@ -50,14 +55,12 @@ def run_one(url: str, stdout: TextIO) -> int:
 
     print(f'{CYAN}{url}{END}', file=stdout)
     show('cloning...')
-    root = clone_repo(url)
+    root = core.clone_repo(url)
     show('analyzing...')
-    commits = get_commits(root)
+    commits = core.get_commits(root)
     if not commits:
         show(f'{YELLOW}empty repo{END}')
         return NO_AI
-    for commit in commits:
-        commit.ai = detect_ai(commit)
 
     show('total commits:', f'{len(commits):>6}     from {commits[0].date} to {commits[-1].date}')
     n_ai = sum(1 for c in commits if c.ai)
@@ -65,13 +68,13 @@ def run_one(url: str, stdout: TextIO) -> int:
         show(f'{GREEN}no AI usage detected{END}')
         return NO_AI
 
-    first_ai: Commit | None = None
+    first_ai: core.Commit | None = None
     for commit in commits:
         if commit.ai:
             first_ai = commit
             break
     assert first_ai
-    last_ai: Commit | None = None
+    last_ai: core.Commit | None = None
     for commit in reversed(commits):
         if commit.ai:
             last_ai = commit
@@ -92,7 +95,7 @@ def run_one(url: str, stdout: TextIO) -> int:
         show('  hash:   ', commit.hash)
         show('  date:   ', commit.date)
         show('  author: ', commit.author)
-        tag = get_tag_for(commit, root)
+        tag = core.get_tag_for(commit, root)
         if tag:
             show('  release:', f'{RED}{tag}{END}')
         show('  reason: ', f'{YELLOW}{commit.ai}{END}')
@@ -100,9 +103,9 @@ def run_one(url: str, stdout: TextIO) -> int:
 
     for commit in commits:
         if commit.ai:
-            ai_tag = get_tag_for(commit, root)
+            ai_tag = core.get_tag_for(commit, root)
             if ai_tag:
-                prev_tag = find_tag_before(ai_tag, root)
+                prev_tag = core.find_tag_before(ai_tag, root)
                 if prev_tag:
                     show('last AI-free release:', f'{GREEN}{prev_tag}{END}')
             break
