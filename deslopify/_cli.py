@@ -1,8 +1,9 @@
 import sys
 from argparse import ArgumentParser
 from collections import Counter
+from pathlib import Path
 from typing import NoReturn, TextIO
-from ._core import Commit, clone_repo, find_tag_before, get_commits, detect_ai, get_tag_for
+from ._core import Commit, clone_repo, find_tag_before, get_commits, detect_ai, get_tag_for, parse_gomod
 
 NO_AI = 0
 AI = 1
@@ -13,6 +14,7 @@ GREEN = '\033[92m'
 YELLOW = '\033[93m'
 BLUE = '\033[94m'
 MAGENTA = '\033[95m'
+CYAN = '\033[96m'
 END = '\033[0m'
 
 
@@ -26,6 +28,13 @@ def run(stdout: TextIO) -> int:
     args = parser.parse_args(sys.argv[1:])
     max_code = 0
     for url in args.urls:
+        path = Path(url)
+        if path.name == 'go.mod':
+            for url in parse_gomod(path):
+                code = run_one(url, stdout)
+                max_code = max(max_code, code)
+            continue
+
         code = run_one(url, stdout)
         max_code = max(max_code, code)
     return max_code
@@ -39,13 +48,13 @@ def run_one(url: str, stdout: TextIO) -> int:
             field = f'{BLUE}{field}{END}'
         print(' ', field, *args, file=stdout)
 
-    print(f'{GREEN}{url}{END}', file=stdout)
+    print(f'{CYAN}{url}{END}', file=stdout)
     show('cloning...')
     root = clone_repo(url)
     show('analyzing...')
     commits = get_commits(root)
     if not commits:
-        show('empty repo')
+        show(f'{YELLOW}empty repo{END}')
         return NO_AI
     for commit in commits:
         commit.ai = detect_ai(commit)
@@ -53,7 +62,7 @@ def run_one(url: str, stdout: TextIO) -> int:
     show('total commits:', f'{len(commits):>6}     from {commits[0].date} to {commits[-1].date}')
     n_ai = sum(1 for c in commits if c.ai)
     if not n_ai:
-        show('no AI usage detected')
+        show(f'{GREEN}no AI usage detected{END}')
         return NO_AI
 
     first_ai: Commit | None = None

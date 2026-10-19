@@ -75,6 +75,15 @@ def clone_repo(url: str) -> Path:
     return out_dir
 
 
+def parse_gomod(path: Path) -> list[str]:
+    urls = []
+    for word in path.read_text().split():
+        if word.startswith('github.com/'):
+            url = '/'.join(word.split('/')[:3])
+            urls.append(f'https://{url}')
+    return urls
+
+
 def get_commits(root: Path) -> list[Commit]:
     commits: list[Commit] = []
     fmt = r"""format:{"hash": "%H","author":"%aN <%aE>","trailers":"%(trailers:separator=%x2c)","committer":"%cN <%cE>","date":"%ai","message":"%f"}%n"""
@@ -123,7 +132,7 @@ def get_tag_for(commit: Commit, root: Path) -> str | None:
     out = subprocess.run(cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if out.returncode != 0:
         return None
-    return out.stdout.decode(encoding='utf-8').split('~')[0]
+    return out.stdout.decode(encoding='utf-8').split('~')[0].strip()
 
 
 def find_tag_before(tag: str, root: Path) -> str | None:
