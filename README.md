@@ -1,8 +1,8 @@
 # deslopify
 
-Analyze any git project to find out when it turned into AI slop.
+Analyze a project to find out when it turned into AI slop. Can scan git repos (local or remote), and Go (`go.mod`) and Rust (`Cargo.toml`) dependencies.
 
-AI detection is done based on git commit author, co-author, committer, agent files, etc. If the project author deliberately hides AI usage, we cannot detect it.
+AI detection is done based on git commit author, co-author, committer, agent files, etc. If the project author deliberately hides AI usage, we cannot detect it. False-positives are also possible (but rare): some anti-AI projects include an `AGENTS.md` file telling AI agents that the project is not open to AI contributions.
 
 ## Installation
 
