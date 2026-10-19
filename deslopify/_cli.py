@@ -2,7 +2,7 @@ import sys
 from argparse import ArgumentParser
 from collections import Counter
 from typing import NoReturn, TextIO
-from ._core import clone_repo, find_tag_before, get_commits, detect_ai, get_tag_for
+from ._core import Commit, clone_repo, find_tag_before, get_commits, detect_ai, get_tag_for
 
 NO_AI = 0
 AI = 1
@@ -50,15 +50,28 @@ def run_one(url: str, stdout: TextIO) -> int:
     for commit in commits:
         commit.ai = detect_ai(commit)
 
-    show('total commits:', str(len(commits)))
-    show('first commit: ', commits[0].date)
-    show('last commit:  ', commits[-1].date)
+    show('total commits:', f'{len(commits):>6}     from {commits[0].date} to {commits[-1].date}')
     n_ai = sum(1 for c in commits if c.ai)
     if not n_ai:
         show('no AI usage detected')
         return NO_AI
+
+    first_ai: Commit | None = None
+    for commit in commits:
+        if commit.ai:
+            first_ai = commit
+            break
+    assert first_ai
+    last_ai: Commit | None = None
+    for commit in reversed(commits):
+        if commit.ai:
+            last_ai = commit
+            break
+    assert last_ai
+
     n_all = len(commits)
-    show('AI commits:   ', f'{n_ai} ({round(n_ai/n_all*100)}%)')
+    percent = round(n_ai/n_all*100)
+    show('AI commits:   ', f'{n_ai:>6} {BLUE}{percent:>2}%{END} from {first_ai.date} to {last_ai.date}')
     for reason, n in Counter(c.ai for c in commits).most_common():
         if reason is not None:
             show(f'  {n:>5} {YELLOW}{reason}{END}')
@@ -72,7 +85,7 @@ def run_one(url: str, stdout: TextIO) -> int:
         show('  author: ', commit.author)
         tag = get_tag_for(commit, root)
         if tag:
-            show('  release:', tag)
+            show('  release:', f'{RED}{tag}{END}')
         show('  reason: ', f'{YELLOW}{commit.ai}{END}')
         break
 
@@ -82,7 +95,7 @@ def run_one(url: str, stdout: TextIO) -> int:
             if ai_tag:
                 prev_tag = find_tag_before(ai_tag, root)
                 if prev_tag:
-                    show('last AI-free release:', prev_tag)
+                    show('last AI-free release:', f'{GREEN}{prev_tag}{END}')
             break
 
     return AI

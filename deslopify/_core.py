@@ -86,6 +86,7 @@ def get_commits(root: Path) -> list[Commit]:
         except json.decoder.JSONDecodeError:
             continue
         commit = Commit(**parsed)
+        commit.date = commit.date.split()[0]
         commits.append(commit)
 
     cmd = ['git', 'log', '--diff-filter=A', '--pretty=format:%H', '--']
