@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
 from argparse import ArgumentParser
+from collections import Counter
 from typing import NoReturn
 from ._core import clone_repo, get_commits, detect_ai, Commit, get_tag_for
 
@@ -28,6 +29,9 @@ def run() -> int:
         return 0
     n_all = len(commits)
     print('AI commits:   ', f'{n_ai}/{n_all} ({round(n_ai/n_all*100)}%)')
+    for reason, n in Counter(c.ai for c in commits).most_common():
+        if reason is not None:
+            print(f'  {n:>5} {reason}')
 
     for commit in commits:
         if not commit.ai:
