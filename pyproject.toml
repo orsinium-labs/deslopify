@@ -1,0 +1,19 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "deslopify"
+authors = [{ name = "Gram", email = "git@orsinium.dev" }]
+dynamic = ["version", "description"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Typing :: Typed",
+]
+keywords = ["slop", "ai-detection", "cli"]
+
+[project.urls]
+Home = "https://github.com/orsinium-labs/deslopify"

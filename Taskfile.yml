@@ -1,0 +1,30 @@
+# https://taskfile.dev/
+version: "3"
+
+vars:
+  PYTHON: python3
+  VENVS: .venvs
+  TEST_ENV: .venvs/test
+  LINT_ENV: .venvs/lint
+  DOCS_ENV: .venvs/docs
+  TEST_PYTHON: "{{.TEST_ENV}}/bin/python3"
+  LINT_PYTHON: "{{.LINT_ENV}}/bin/python3"
+  DOCS_PYTHON: "{{.DOCS_ENV}}/bin/python3"
+
+env:
+  FLIT_ROOT_INSTALL: "1"
+
+tasks:
+  release:
+    cmds:
+      - which gh
+      - test {{.CLI_ARGS}}
+      - cat deslopify/__init__.py | grep {{.CLI_ARGS}}
+      - rm -rf dist/
+      - flit build
+      - flit publish
+      - git tag {{.CLI_ARGS}}
+      - git push
+      - git push --tags
+      - gh release create --generate-notes {{.CLI_ARGS}}
+      - gh release upload {{.CLI_ARGS}} ./dist/*

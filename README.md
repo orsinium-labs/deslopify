@@ -7,8 +7,7 @@ AI detection is done based on git commit author, co-author, committer, agent fil
 ## Installation
 
 ```bash
-git clone https://github.com/orsinium-labs/deslopify
-cd deslopify
+python3 -m pip install --break-system-packages deslopify
 ```
 
 ## Usage
