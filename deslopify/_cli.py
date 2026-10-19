@@ -1,50 +1,79 @@
-from pathlib import Path
 import sys
 from argparse import ArgumentParser
 from collections import Counter
-from typing import NoReturn
-from ._core import clone_repo, find_tag_before, get_commits, detect_ai, Commit, get_tag_for
+from typing import NoReturn, TextIO
+from ._core import clone_repo, find_tag_before, get_commits, detect_ai, get_tag_for
+
+NO_AI = 0
+AI = 1
+ERR = 2
+
+RED = '\033[91m'
+GREEN = '\033[92m'
+YELLOW = '\033[93m'
+BLUE = '\033[94m'
+MAGENTA = '\033[95m'
+END = '\033[0m'
 
 
-def run() -> int:
+def entrypoint() -> NoReturn:
+    sys.exit(run(sys.stdout))
+
+
+def run(stdout: TextIO) -> int:
     parser = ArgumentParser()
-    parser.add_argument('url')
+    parser.add_argument('urls', nargs='+')
     args = parser.parse_args(sys.argv[1:])
-    print('cloning...')
-    root = clone_repo(args.url)
-    print('analyzing...')
+    max_code = 0
+    for url in args.urls:
+        code = run_one(url, stdout)
+        max_code = max(max_code, code)
+    return max_code
+
+
+def run_one(url: str, stdout: TextIO) -> int:
+    def show(field: str, *args: str):
+        if args:
+            field = f'{MAGENTA}{field}{END}'
+        elif field.endswith('...'):
+            field = f'{BLUE}{field}{END}'
+        print(' ', field, *args, file=stdout)
+
+    print(f'{GREEN}{url}{END}', file=stdout)
+    show('cloning...')
+    root = clone_repo(url)
+    show('analyzing...')
     commits = get_commits(root)
     if not commits:
-        print('empty repo')
-        return 1
+        show('empty repo')
+        return NO_AI
     for commit in commits:
         commit.ai = detect_ai(commit)
 
-    print('total commits:', len(commits))
-    print('first commit: ', commits[0].date)
-    print('last commit:  ', commits[-1].date)
+    show('total commits:', str(len(commits)))
+    show('first commit: ', commits[0].date)
+    show('last commit:  ', commits[-1].date)
     n_ai = sum(1 for c in commits if c.ai)
     if not n_ai:
-        print('no AI usage detected')
-        return 0
+        show('no AI usage detected')
+        return NO_AI
     n_all = len(commits)
-    print('AI commits:   ', f'{n_ai}/{n_all} ({round(n_ai/n_all*100)}%)')
+    show('AI commits:   ', f'{n_ai} ({round(n_ai/n_all*100)}%)')
     for reason, n in Counter(c.ai for c in commits).most_common():
         if reason is not None:
-            print(f'  {n:>5} {reason}')
+            show(f'  {n:>5} {YELLOW}{reason}{END}')
 
     for commit in commits:
         if not commit.ai:
             continue
-        print('first AI commit: ')
-        print_commit(commit, root)
-        break
-
-    for commit in reversed(commits):
-        if not commit.ai:
-            continue
-        print('last AI commit: ')
-        print_commit(commit, root)
+        show(f'{MAGENTA}first AI commit:{END}')
+        show('  hash:   ', commit.hash)
+        show('  date:   ', commit.date)
+        show('  author: ', commit.author)
+        tag = get_tag_for(commit, root)
+        if tag:
+            show('  release:', tag)
+        show('  reason: ', f'{YELLOW}{commit.ai}{END}')
         break
 
     for commit in commits:
@@ -53,21 +82,7 @@ def run() -> int:
             if ai_tag:
                 prev_tag = find_tag_before(ai_tag, root)
                 if prev_tag:
-                    print('last AI-free release:', prev_tag)
+                    show('last AI-free release:', prev_tag)
             break
 
-    return 0
-
-
-def print_commit(commit: Commit, root: Path) -> None:
-    print('  hash:   ', commit.hash)
-    print('  date:   ', commit.date)
-    print('  author: ', commit.author)
-    tag = get_tag_for(commit, root)
-    if tag:
-        print('  release:', tag)
-    print('  reason: ', commit.ai)
-
-
-def entrypoint() -> NoReturn:
-    sys.exit(run())
+    return AI
