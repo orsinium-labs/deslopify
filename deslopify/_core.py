@@ -62,6 +62,10 @@ class Commit:
 
 
 def clone_repo(url: str) -> Path:
+    path = Path(url)
+    if (path / '.git' / 'config').exists():
+        return path
+
     project_name = url.strip('/').split('/')[-1]
     out_dir = Path(gettempdir()) / project_name
     if not (out_dir / '.git' / 'config').exists():
