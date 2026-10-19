@@ -86,7 +86,7 @@ def parse_gomod(path: Path) -> Iterator[str]:
 def parse_cargotoml(path: Path) -> Iterator[str]:
     import tomllib
 
-    cmd = ['cargo', 'metadata']
+    cmd = ['cargo', 'metadata', '--format-version=1']
     out = subprocess.run(cmd, cwd=path.parent, stdout=subprocess.PIPE)
     out.check_returncode()
     deps = json.loads(out.stdout)['packages']
