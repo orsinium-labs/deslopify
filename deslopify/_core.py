@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from typing import Iterator
 
 
-USER_AGENT = 'deslopify (https://github.com/orsinium-labs/deslopify)'
-
 TELLTALES = (
     # names
     ('Claude', 'Claude'),
@@ -88,25 +86,21 @@ def parse_gomod(path: Path) -> Iterator[str]:
 def parse_cargotoml(path: Path) -> Iterator[str]:
     import tomllib
 
+    cmd = ['cargo', 'metadata']
+    out = subprocess.run(cmd, cwd=path.parent, stdout=subprocess.PIPE)
+    out.check_returncode()
+    deps = json.loads(out.stdout)['packages']
+    urls = {dep['name']: dep.get('repository') for dep in deps}
+
     config = tomllib.loads(path.read_text())
     for dep_name in config.get('dependencies', {}):
-        url = _get_crate_repo(dep_name)
+        url = urls[dep_name]
         if url:
             yield url
     for dep_name in config.get('dev-dependencies', {}):
-        url = _get_crate_repo(dep_name)
+        url = urls[dep_name]
         if url:
             yield url
-
-
-def _get_crate_repo(name: str) -> str | None:
-    import requests
-
-    url = f'https://crates.io/api/v1/crates/{name}'
-    resp = requests.get(url, headers={'User-Agent': USER_AGENT})
-    if resp.status_code != 200:
-        return None
-    return resp.json()['crate'].get('repository')
 
 
 def get_commits(root: Path) -> list[Commit]:
